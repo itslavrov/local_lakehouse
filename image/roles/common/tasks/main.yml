@@ -1,0 +1,134 @@
+---
+- name: Wait for apt/dpkg locks (common)
+  ansible.builtin.shell: |
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+      sleep 5
+    done
+    while fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+      sleep 5
+    done
+
+- name: Install networking tools
+  ansible.builtin.apt:
+    name:
+      - net-tools
+      - iputils-ping
+      - dnsutils
+      - traceroute
+      - mtr
+      - tcpdump
+      - nmap
+      - socat
+      - iperf3
+    state: present
+
+- name: Install common CLI tools
+  ansible.builtin.apt:
+    name:
+      - jq
+      - htop
+      - iotop
+      - lsof
+      - unzip
+      - zip
+      - rsync
+      - tree
+    state: present
+
+- name: Install chrony
+  ansible.builtin.apt:
+    name: chrony
+    state: present
+
+- name: Enable and start chrony
+  ansible.builtin.service:
+    name: chrony
+    enabled: yes
+    state: started
+
+- name: Ensure Docker apt key directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Add Docker apt GPG key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+
+- name: Add Docker apt repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename | default('jammy') }} stable"
+    filename: docker
+    state: present
+
+- name: Update apt cache after adding Docker repo
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Install Docker packages
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+
+- name: Ensure docker group exists
+  ansible.builtin.group:
+    name: docker
+    state: present
+
+- name: Add user to docker group
+  ansible.builtin.user:
+    name: "{{ docker_user }}"
+    groups: docker
+    append: yes
+
+- name: Configure Docker daemon
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    content: |
+      {
+        "exec-opts": ["native.cgroupdriver=systemd"],
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "50m",
+          "max-file": "5"
+        },
+        "storage-driver": "overlay2"
+      }
+    mode: "0644"
+
+- name: Enable and start Docker service
+  ansible.builtin.service:
+    name: docker
+    enabled: yes
+    state: started
+
+- name: Restart Docker after config change
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+
+- name: Clean apt cache
+  ansible.builtin.apt:
+    autoclean: yes
+
+- name: Autoremove unused packages
+  ansible.builtin.apt:
+    autoremove: yes
+
+- name: Remove cloud-init log
+  ansible.builtin.file:
+    path: /var/log/cloud-init.log
+    state: absent
+
+- name: Zero out free space
+  ansible.builtin.shell: |
+    dd if=/dev/zero of=/EMPTY bs=1M || true
+    rm -f /EMPTY

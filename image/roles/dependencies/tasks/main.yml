@@ -1,0 +1,63 @@
+---
+- name: Wait for apt/dpkg locks
+  ansible.builtin.shell: |
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+      sleep 5
+    done
+    while fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+      sleep 5
+    done
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install base tools
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - git
+      - openssl
+      - lsb-release
+    state: present
+
+- name: Install system packages
+  ansible.builtin.apt:
+    name:
+      - python3
+      - python3-pip
+      - python3-dev
+      - gcc
+      - make
+      - libffi-dev
+      - libssl-dev
+      - libkrb5-dev
+      - krb5-user
+    state: present
+
+- name: Upgrade pip
+  ansible.builtin.pip:
+    name: pip
+    state: latest
+    extra_args: --upgrade
+    executable: pip3
+
+- name: Install Python modules
+  ansible.builtin.pip:
+    name:
+      - jinja2
+      - requests
+      - pywinrm
+      - kerberos
+      - ansible
+    state: present
+    executable: pip3
+
+- name: Update libsoup and webkit2gtk
+  ansible.builtin.apt:
+    name:
+      - libsoup2.4-1
+      - libwebkit2gtk-4.0-37
+    state: latest

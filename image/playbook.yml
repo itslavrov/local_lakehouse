@@ -1,0 +1,11 @@
+---
+- hosts: all
+  become: true
+  gather_facts: true
+
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+  roles:
+    - dependencies
+    - common

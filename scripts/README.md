@@ -40,9 +40,3 @@ sudo chmod +x /opt/scripts/*.sh
 /opt/scripts/06-stop-lakehouse.sh
 ```
 
-### What’s Included
-
-* Cleaned & fixed Docker Compose files for MinIO, Nessie, Trino, and Airflow.
-* Improved Dockerfile for Airflow with DBT installation.
-* Automated `.env` generation with secure random secrets.
-* Scripts for full lifecycle automation (install, pull, generate, start, status, stop).
