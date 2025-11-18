@@ -1,14 +1,16 @@
 # Lakehouse DevKit
 
-This project provides a fully automated **local Lakehouse setup** built on **MinIO, Nessie, Trino, and Airflow**.
-The environment is designed for quick provisioning, reproducible development, and consistent deployment across local machines and VK Cloud.
+This project provides an automated **Lakehouse environment** based on **MinIO, Nessie, Trino, and Airflow**.
+The setup supports fast provisioning both **locally** and in **VK Cloud**, using scripts, Docker Compose, Packer, Ansible, and Terraform.
 
-### Repository Structure
+## Repository Structure
 
-* **scripts/** - automation for installing dependencies, generating environment files, and managing the full Lakehouse lifecycle.
-* **lakehouse_repo/** - the actual Lakehouse stack (Docker Compose, configs, DBT, Airflow, DAGs).
-* **image/** - Packer + Ansible configuration for building a custom Ubuntu 22.04 image in VK Cloud with all required tools preinstalled.
+* **lakehouse_repo/** – the Lakehouse components (Docker Compose, configs, Trino, MinIO, Nessie, Airflow, DBT, DAGs).
+* **scripts/** – automation for dependency installation, environment generation, and lifecycle management of the Lakehouse stack.
+* **image/** – Packer + Ansible build for a custom Ubuntu 22.04 image with all required tools preinstalled.
+* **terraform/** – Terraform configuration for deploying a ready-to-run Lakehouse VM in VK Cloud.
 
-### Summary
+## Summary
 
-With these components, you can deploy a complete Lakehouse environment in minutes - locally or in VK Cloud - using a standardized, fully automated workflow.
+Using this structure, you can deploy a complete Lakehouse environment in minutes-locally or in VK Cloud-through a unified, automated workflow.
+When deploying via Terraform, the VM becomes available immediately, but the Lakehouse services continue initializing in the background. Before using the environment, wait until all containers are up and healthy.
