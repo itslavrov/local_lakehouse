@@ -3,6 +3,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+PASSWORD_SCRIPT="${SCRIPT_DIR}/trino_config/create-password-db.sh"
+if [ -f "$PASSWORD_SCRIPT" ] && [ ! -x "$PASSWORD_SCRIPT" ]; then
+    chmod +x "$PASSWORD_SCRIPT"
+fi
+
 load_env() {
   ENV_FILE="${SCRIPT_DIR}/.env"
 
@@ -27,6 +32,9 @@ start_services() {
   echo "Starting Local Lakehouse services..."
 
   cd "$SCRIPT_DIR"
+
+  echo "Creating Trino password file..."
+  ./trino_config/create-password-db.sh
 
   echo "Starting data lake services (MinIO + Nessie)..."
   docker compose -f docker-compose-lake.yaml up -d
@@ -56,10 +64,7 @@ start_services() {
   echo "      pass: ${AIRFLOW_PASSWORD}"
   echo "  - Nessie API:     http://localhost:19120"
   echo
-
-  init_trino
 }
-
 init_trino() {
   echo "Initializing Trino schemas..."
   docker exec trino-coordinator trino --catalog iceberg --file /etc/trino/init.sql
@@ -69,11 +74,14 @@ init_trino() {
 
 load_dbt_seed_data() {
   echo "Loading CSV seed data via dbt..."
+  
+  export TRINO_USERNAME="${TRINO_USERNAME:-trino}"
+  export TRINO_PASSWORD="${TRINO_PASSWORD:-trino}"
+  
   dbt seed --project-dir ./dags/dbt_trino --profiles-dir ./dags/dbt_trino
   echo "CSV files loaded to landing schema via dbt."
   echo
 }
-
 stop_services() {
   echo "Stopping Local Lakehouse services..."
 
