@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-for script in create-password-db.sh generate-configs.sh generate-iceberg-config.sh; do
+for script in create-password-db.sh generate-configs.sh; do
   if [ -f "$SCRIPT_DIR/trino_config/$script" ] && [ ! -x "$SCRIPT_DIR/trino_config/$script" ]; then
     chmod +x "$SCRIPT_DIR/trino_config/$script"
   fi
@@ -20,10 +20,15 @@ start_services() {
 
   cd "$SCRIPT_DIR"
 
-  [ -f "./trino_config/generate-configs.sh" ] && ./trino_config/generate-configs.sh
-  [ -f "./trino_config/generate-iceberg-config.sh" ] && ./trino_config/generate-iceberg-config.sh
-  
-  ./trino_config/create-password-db.sh
+  load_env
+
+  if [ -x "./trino_config/generate-configs.sh" ]; then
+    ./trino_config/generate-configs.sh
+  fi
+
+  if [ -x "./trino_config/create-password-db.sh" ]; then
+    ./trino_config/create-password-db.sh
+  fi
 
   docker compose -f docker-compose-lake.yaml up -d
   sleep 5
@@ -32,14 +37,15 @@ start_services() {
   sleep 45
 
   load_env
-  if docker ps | grep -q trino-coordinator; then
-    docker exec trino-coordinator trino \
+
+  if docker compose -f docker-compose-trino.yaml ps -q trino-coordinator >/dev/null 2>&1; then
+    docker exec -e TRINO_PASSWORD="$TRINO_PASSWORD" trino-coordinator trino \
       --server http://localhost:8080 \
       --user "$TRINO_USERNAME" \
-      --password "$TRINO_PASSWORD" \
+      --password \
       --file /etc/trino/init.sql 2>/dev/null || true
   fi
-  
+
   docker compose -f docker-compose-airflow.yaml up -d
   sleep 5
 
@@ -50,7 +56,7 @@ load_dbt_seed_data() {
   load_env
   export TRINO_USERNAME="$TRINO_USERNAME"
   export TRINO_PASSWORD="$TRINO_PASSWORD"
-  
+
   dbt seed --project-dir ./dags/dbt_trino --profiles-dir ./dags/dbt_trino
 }
 
